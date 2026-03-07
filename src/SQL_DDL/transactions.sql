@@ -1,0 +1,9 @@
+CREATE TABLE transactions (
+	id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+	account_id INT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+	txn_type TEXT NOT NULL,
+	amount NUMERIC(18, 2)  NOT NULL CHECK(amount > 0),
+	related_account_id INT,
+	status TEXT NOT NULL DEFAULT ‘COMPLETED’,
+	created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
