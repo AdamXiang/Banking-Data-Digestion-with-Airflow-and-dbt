@@ -1,0 +1,11 @@
+pyyaml
+
+requests
+
+kafka-python
+boto3
+fastparquet
+pandas
+
+
+dbt-snowflake
