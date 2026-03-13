@@ -1,4 +1,61 @@
+# =========================
+# IDE (PyCharm / JetBrains)
+# =========================
+.idea/
+*.iml
+*.iws
+out/
+
+# =========================
+# OS Generated Files
+# =========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# =========================
+# Python & Virtual Environments
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =========================
+# Secrets & Configuration
+# =========================
 .env
-.idea/*
-.idea
-.venv
+.env.*
+!.env.template
+*.pem
+*.key
+
+# =========================
+# Data Engineering Tools
+# =========================
+# Airflow
+airflow-webserver.pid
+airflow.db
+airflow.cfg
+logs/
+plugins/__pycache__/
+
+# dbt
+target/
+dbt_packages/
+logs/dbt.log
+
+# Kafka / Local Data Dumps
+*.csv
+*.json
+*.parquet
+/tmp/
