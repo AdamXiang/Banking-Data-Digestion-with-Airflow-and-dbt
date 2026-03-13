@@ -14,7 +14,6 @@ from typing import Dict, List
 from datetime import datetime, timedelta
 
 from airflow.decorators import dag, task
-from dotenv import load_dotenv
 
 # ---------------
 # Configuration |
