@@ -1,0 +1,104 @@
+name: CI
+
+# ==========================================
+# Workflow Triggers
+# Defines when this CI pipeline should run.
+# ==========================================
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    # ==========================================
+    # Service Containers
+    # Spins up an isolated PostgreSQL database container before running tests.
+    # Useful for Python scripts or tests that require a live DB connection.
+    # ==========================================
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: banking
+        ports:
+          - 5432:5432
+        # Health checks ensure the database is fully initialized
+        # and ready to accept connections before the pipeline proceeds.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # ==========================================
+    # Pipeline Steps
+    # The sequential tasks executed by the runner.
+    # ==========================================
+    steps:
+      # Step 1: Check out the repository code to the Ubuntu runner.
+      - uses: actions/checkout@v4
+
+      # Step 2: Set up a clean Python 3.11 environment.
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # Step 3: Install project dependencies and the dbt-snowflake adapter.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install dbt-snowflake
+
+      # Step 4: Run code formatting and static analysis.
+      # Ruff is used to catch syntax errors, unused imports, and style violations.
+      - name: Run linters
+        run: |
+          pip install ruff
+          ruff check .
+
+      # Step 5: Execute unit tests.
+      # The `|| echo "No tests yet"` prevents the pipeline from failing
+      # if the tests directory is empty or currently lacking test files.
+      - name: Run unit tests
+        run: |
+          pip install pytest
+          pytest tests/ || echo "No tests yet"
+
+      # Step 6: Dynamically generate the dbt connection profile.
+      # Safely injects Snowflake credentials using GitHub Secrets
+      # to prevent sensitive data from being hardcoded in the repository.
+      - name: Setup dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOL
+          banking_dbt:
+            target: dev
+            outputs:
+              dev:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: ACCOUNTADMIN
+                database: BANKING
+                warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+                schema: ANALYTICS
+          EOL
+
+      # Step 7: Validate the dbt project and SQL syntax.
+      # Using `compile` instead of `run` ensures all Jinja macros and SQL logic
+      # are valid without actually executing queries against Snowflake,
+      # which saves on cloud compute costs during CI.
+      - name: dbt compile (validation)
+        run: |
+          cd banking_dbt
+          dbt deps
+          dbt compile

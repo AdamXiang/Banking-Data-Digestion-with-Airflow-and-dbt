@@ -1,0 +1,78 @@
+name: CD
+
+# ==========================================
+# Workflow Triggers (The Deployment Gate)
+# This pipeline ONLY runs when code is successfully merged or pushed to the `main` branch.
+# It acts as the final deployment step to production.
+# ==========================================
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ==========================================
+      # Step 1: Source Control Checkout
+      # Pulls the latest, approved production code from the main branch.
+      # ==========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ==========================================
+      # Step 2: Environment Provisioning
+      # Sets up a consistent Python runtime to execute dbt.
+      # ==========================================
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # ==========================================
+      # Step 3: Dependency Installation
+      # Installs the specific dbt adapter required to communicate with Snowflake.
+      # ==========================================
+      - name: Install dbt Snowflake adapter
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-snowflake
+
+      # ==========================================
+      # Step 4: Production Credential Injection
+      # Dynamically generates the dbt profile for the 'prod' target.
+      # Uses GitHub Secrets to securely authenticate with Snowflake.
+      # ==========================================
+      - name: Setup dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml <<EOL
+          banking_dbt:
+            target: prod
+            outputs:
+              prod:
+                type: snowflake
+                account: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+                user: ${{ secrets.SNOWFLAKE_USER }}
+                password: ${{ secrets.SNOWFLAKE_PASSWORD }}
+                role: ACCOUNTADMIN
+                database: BANKING
+                warehouse: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+                
+                # NOTE: In an enterprise environment, production schema is usually 
+                # strictly separated from development (e.g., ANALYTICS_PROD).
+                schema: ANALYTICS 
+          EOL
+
+      # ==========================================
+      # Step 5: Data Model Materialization and Validation
+      # Downloads dbt packages, builds the tables/views in Snowflake,
+      # and runs data quality tests on the newly materialized data.
+      # ==========================================
+      - name: dbt run + test (prod)
+        run: |
+          cd banking_dbt
+          dbt deps
+          dbt run    # Materializes models (tables/views) in Snowflake
+          dbt test   # Executes data quality assertions (unique, not_null, etc.)
