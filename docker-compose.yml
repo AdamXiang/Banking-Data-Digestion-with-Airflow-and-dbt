@@ -111,13 +111,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: airflow-webserver
+    env_file:
+      - .env
     restart: always
     volumes: # dags, plugin still use bind mount for development
       - ./docker/dags:/opt/airflow/dags
       - ./docker/logs:/opt/airflow/logs
       - ./docker/plugins:/opt/airflow/plugins
       - ./banking_dbt:/opt/airflow/banking_dbt
-      - ./banking_dbt/.dbt:/home/airflow/.dbt
+      - /Users/adam/.dbt:/home/airflow/.dbt:ro
     ports:
       - "8080:8080"
     command: webserver
@@ -128,13 +130,15 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: airflow-scheduler
+    env_file:
+      - .env
     restart: always
     volumes:
       - ./docker/dags:/opt/airflow/dags
       - ./docker/logs:/opt/airflow/logs
       - ./docker/plugins:/opt/airflow/plugins
       - ./banking_dbt:/opt/airflow/banking_dbt
-      - ./banking_dbt/.dbt:/home/airflow/.dbt
+      - /Users/adam/.dbt:/home/airflow/.dbt:ro # change my .dbt location to yours
     command: scheduler
 
   airflow-postgres:
