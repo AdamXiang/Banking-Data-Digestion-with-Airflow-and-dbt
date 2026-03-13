@@ -12,9 +12,10 @@ import time
 import psycopg2
 from dotenv import load_dotenv
 from faker import Faker
+import os
 
 # Import custom modules
-from src import data_generator, config, db_loader
+from src.data_generator import data_generator, config, db_loader
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -41,7 +42,8 @@ def main() -> None:
     loop, coordinates the data flow between modules, and commits transactions.
     """
     # 1. Initialization and Setup
-    load_dotenv(verbose=True)
+    dotenv_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
+    load_dotenv(dotenv_path, verbose=True)
     args = parse_arguments()
     loop_active = not args.once and config.DEFAULT_LOOP
     fake = Faker()
@@ -92,8 +94,12 @@ def main() -> None:
                     # Pause before the next iteration
                     time.sleep(config.SLEEP_SECONDS)
 
+
     except psycopg2.OperationalError as e:
         print(f"Database connection failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         sys.exit(1)
     except KeyboardInterrupt:
         print("\nInterrupted by user. Exiting gracefully...")
@@ -102,8 +108,6 @@ def main() -> None:
         if 'conn' in locals() and not conn.closed:
             conn.close()
             print("Database connection closed.")
-        sys.exit(0)
-
 
 if __name__ == "__main__":
     main()
