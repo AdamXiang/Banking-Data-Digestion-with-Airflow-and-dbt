@@ -25,7 +25,6 @@
 
 ## 🏗️ High-Level Architecture
 
-[建議在此處插入架構圖]
 
 The data flows through **5 distinct stages**, each with a clear responsibility boundary:
 
